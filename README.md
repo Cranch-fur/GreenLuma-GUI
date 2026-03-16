@@ -17,4 +17,4 @@ You can check an application ID by opening its store page in a browser and extra
 Yes.
 
 # How to update GreenLuma.dll?
-Latest files are always published at [CS.RIN forum](https://cs.rin.ru/forum/viewtopic.php?f=29&t=103709). Download latest x64 GreenLuma and rename it to "GreenLuma.dll", place near the GUI executable.
+Latest files are always published at [CS.RIN forum](https://cs.rin.ru/forum/viewtopic.php?f=29&t=103709). Download latest x64 GreenLuma and rename its Stealth ("user32SF.dll") to "GreenLuma.dll", place near the GUI executable.
