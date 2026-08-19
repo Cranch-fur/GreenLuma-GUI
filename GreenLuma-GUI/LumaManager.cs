@@ -43,48 +43,59 @@ namespace GreenLumaGUI
 
 
 
-        public static string GetGamesListPath()
+        public static string GetGamesListDirectoryPath()
         {
             string clientPath = SteamManager.GetClientPath();
-            if (clientPath == null || Directory.Exists(clientPath) == false)
+            if (string.IsNullOrEmpty(clientPath) || Directory.Exists(clientPath) == false)
                 return null;
 
 
             return Path.Combine(clientPath, "AppList");
         }
 
+        public static string GetGamesListFilePath()
+        {
+            string gamesListDirectory = GetGamesListDirectoryPath();
+            if (string.IsNullOrEmpty(gamesListDirectory))
+                return null;
+
+            return Path.Combine(gamesListDirectory, "AppList.ini");
+        }
+
 
         public static List<string> GetGamesList()
         {
-            string gamesListPath = GetGamesListPath();
-
-
-            if (gamesListPath == null)
-                return null;
-
-
-            if (Directory.Exists(gamesListPath) == false)
+            string filePath = GetGamesListFilePath();
+            if (string.IsNullOrEmpty(filePath) || File.Exists(filePath) == false)
                 return null;
 
 
             List<string> gamesList = new List<string>();
-            
-            string[] detectedFiles = Directory.GetFiles(gamesListPath, "*.txt", SearchOption.AllDirectories);
-            Array.Sort(detectedFiles);
-
-            foreach (string file in detectedFiles)
+            try
             {
-                try
-                {
-                    string fileContent = File.ReadAllText(file);
+                string[] lines = File.ReadAllLines(filePath);
 
-                    if (Int64.TryParse(fileContent, out long appId))
-                        gamesList.Add(fileContent);
+                foreach (string line in lines)
+                {
+                    string trimmedLine = line.Trim();
+
+                    if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("["))
+                        continue;
+
+                    string[] parts = trimmedLine.Split(new char[] { '=' }, 2);
+                    if (parts.Length == 2)
+                    {
+                        string appIdString = parts[1].Trim();
+
+                        if (Int64.TryParse(appIdString, out long appId))
+                            gamesList.Add(appIdString);
+                    }
                 }
-                catch (Exception ex) 
-                { 
-                    ExceptionManager.ShowException(ex); 
-                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionManager.ShowException(ex);
+                return new List<string>();
             }
 
 
@@ -94,18 +105,20 @@ namespace GreenLumaGUI
 
         public static bool WriteGamesList(List<string> gamesList)
         {
-            string gamesListPath = GetGamesListPath();
+            string directoryPath = GetGamesListDirectoryPath();
+            if (string.IsNullOrEmpty(directoryPath))
+                return false;
 
-
-            if (gamesListPath == null)
+            string filePath = GetGamesListFilePath();
+            if (string.IsNullOrEmpty(filePath))
                 return false;
                 
 
-            if (Directory.Exists(gamesListPath) == false && Directory.Exists(Directory.GetParent(gamesListPath).FullName))
+            if (Directory.Exists(directoryPath) == false)
             {
                 try
                 {
-                    Directory.CreateDirectory(gamesListPath);
+                    Directory.CreateDirectory(directoryPath);
                 }
                 catch (Exception ex)
                 {
@@ -115,20 +128,23 @@ namespace GreenLumaGUI
             }
 
 
-            int gamesCount = gamesList.Count;
-            for (int i = 0; i < gamesCount; i++)
+            try
             {
-                string filePath = Path.Combine(gamesListPath, $"{i}.txt");
+                List<string> linesToWrite = new List<string>();
+                linesToWrite.Add("[AppList]");
 
+                int gamesCount = gamesList.Count;
+                for (int i = 0; i < gamesCount; i++)
+                {
+                    linesToWrite.Add($"{i} = {gamesList[i]}");
+                }
 
-                try
-                {
-                    File.WriteAllText(filePath, gamesList[i]);
-                }
-                catch (Exception ex)
-                {
-                    ExceptionManager.ShowException(ex);
-                }
+                File.WriteAllLines(filePath, linesToWrite);
+            }
+            catch (Exception ex)
+            {
+                ExceptionManager.ShowException(ex);
+                return false;
             }
 
 
@@ -138,13 +154,16 @@ namespace GreenLumaGUI
 
         public static bool ClearGamesList()
         {
+            string filePath = GetGamesListFilePath();
+            if (string.IsNullOrEmpty(filePath))
+                return false;
+
+            if (File.Exists(filePath) == false)
+                return true;
+
             try
             {
-                string gamesListPath = GetGamesListPath();
-
-                if (Directory.Exists(gamesListPath))
-                    Directory.Delete(GetGamesListPath(), true);
-
+                File.Delete(filePath);
                 return true;
             }
             catch (Exception ex)
